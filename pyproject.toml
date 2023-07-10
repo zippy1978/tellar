@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "tellar"
+version = "0.1.0"
+description = ""
+authors = ["Gilles Grousset <gilles.grousset@insideapp.fr>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langchain = "^0.0.224"
+colorama = "^0.4.6"
+click = "^8.1.4"
+gptcache = "^0.1.35"
+pyfiglet = "^0.8.post1"
+urllib3 = "1.26.15"
+openai = "^0.27.8"
+pypdf = "^3.12.1"
+chromadb = "^0.3.27"
+
+[tool.poetry.scripts]
+tellar = "tellar.cli:cli"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
