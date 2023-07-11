@@ -4,7 +4,13 @@ Talk to your favortie fictional characters.
 
 ## Installation
 
-TODO
+Python 3.10+ is required.
+
+Install with:
+
+```bash
+$ pip3 install tellar@git+https://github.com/zippy1978/tellar
+```
 
 ## Usage
 
@@ -23,7 +29,8 @@ Usage: tellar [OPTIONS]
 Options:
   -c, --character TEXT  character name  [required]
   -p, --pdf TEXT        book PDF file path  [required]
-  -l, --language TEXT   language
+  -l, --language TEXT   language  [default: english]
+  -d, --debug           debug mode
   --help                Show this message and exit.
 ```
 

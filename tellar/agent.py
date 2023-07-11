@@ -9,7 +9,7 @@ from langchain.agents.agent import AgentExecutor
 from tellar.prompt import PREFIX, SUFFIX
 
 
-def create_tellar_agent(retriever: Any, char_name: str, language: str) -> AgentExecutor:
+def create_tellar_agent(retriever: Any, char_name: str, language: str, verbose: bool) -> AgentExecutor:
 
     llm = OpenAI(temperature=0)
     story = RetrievalQA.from_chain_type(
@@ -45,6 +45,6 @@ def create_tellar_agent(retriever: Any, char_name: str, language: str) -> AgentE
     return AgentExecutor.from_agent_and_tools(
         agent=agent,
         tools=tools,
-        verbose=False,
+        verbose=verbose,
         memory=memory,
     )

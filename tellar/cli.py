@@ -11,12 +11,28 @@ from tellar.vectordb import load_vectordb
 @click.command()
 @click.option("--character", "-c", type=str, required=True, help="character name")
 @click.option("--pdf", "-p", type=str, required=True, help="book PDF file path")
-@click.option("--language", "-l", type=str, default="english", required=False, help="language")
-def cli(character: str, pdf: str, language: str):
-    
+@click.option(
+    "--language",
+    "-l",
+    type=str,
+    default="english",
+    required=False,
+    help="language",
+    show_default=True,
+)
+@click.option(
+    "--debug", "-d", help="debug mode", is_flag=True, show_default=True, default=False
+)
+def cli(character: str, pdf: str, language: str, debug: bool):
+    print("Reading book... Please wait")
+
     # Check OpenAI API key
     if os.getenv("OPENAI_API_KEY") is None:
-        print(Fore.RED + "Please set the OPENAI_API_KEY environment variable." + Style.RESET_ALL)
+        print(
+            Fore.RED
+            + "Please set the OPENAI_API_KEY environment variable."
+            + Style.RESET_ALL
+        )
         exit(1)
 
     # Check that the PDF file exists
@@ -24,27 +40,26 @@ def cli(character: str, pdf: str, language: str):
         print(Fore.RED + "PDF file not found." + Style.RESET_ALL)
         exit(1)
 
-    home_dir = os.path.expanduser('~')
-    user_data_path = os.path.join(home_dir, '.tellar')
+    home_dir = os.path.expanduser("~")
+    user_data_path = os.path.join(home_dir, ".tellar")
     pdf_name = os.path.basename(pdf)
     # Init query cache
-    init_cache(os.path.join(user_data_path, 'cache', pdf_name))
+    init_cache(os.path.join(user_data_path, "cache", pdf_name))
     # Create / load vector database
-    print("Reading book...", end="")
-    vectordb = load_vectordb(pdf, os.path.join(user_data_path, 'db', pdf_name))
-    print("done.")
+    vectordb = load_vectordb(pdf, os.path.join(user_data_path, "db", pdf_name))
     print(pyfiglet.figlet_format(character))
     # Create agent
     agent = create_tellar_agent(
         retriever=vectordb.as_retriever(),
         char_name=character,
-        language=language)
+        language=language,
+        verbose=debug,
+    )
     # Prompt loop
     while True:
         print(Style.BRIGHT + Fore.BLUE + "You > " + Style.RESET_ALL, end="")
         message = input()
-        print(Style.BRIGHT + Fore.GREEN + character +
-              " > " + Style.RESET_ALL, end="")
+        print(Style.BRIGHT + Fore.GREEN + character + " > " + Style.RESET_ALL, end="")
         print(agent.run(input=message))
 
 
