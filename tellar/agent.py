@@ -1,5 +1,6 @@
 from typing import Any
 from langchain import LLMChain, OpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import RetrievalQA
 from langchain.agents import Tool
@@ -11,7 +12,7 @@ from tellar.prompt import PREFIX, SUFFIX
 
 def create_tellar_agent(retriever: Any, char_name: str, language: str, verbose: bool) -> AgentExecutor:
 
-    llm = OpenAI(temperature=0)
+    llm = ChatOpenAI(temperature=0, model="gpt-4")
     story = RetrievalQA.from_chain_type(
         llm=llm, chain_type="stuff", retriever=retriever)
 

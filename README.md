@@ -22,6 +22,8 @@ Export it as an environement variable:
 $ export OPENAI_API_KEY=your-key
 ```
 
+Available options:
+
 ```bash
 $ tellar --help
 Usage: tellar [OPTIONS]
@@ -34,6 +36,12 @@ Options:
   --help                Show this message and exit.
 ```
 
+Example usage:
+
+```bash
+$ tellar -c "Harry Potter" -p harry_potter.pdf -l français
+```
+
 ## Development environement setup
 
 A venv is recommended to run the project properly (see https://docs.python.org/fr/3/library/venv.html).
@@ -41,6 +49,5 @@ A venv is recommended to run the project properly (see https://docs.python.org/f
 ### Install dependencies
 
 ```bash
-$ export HNSWLIB_NO_NATIVE=1
 $ poetry install
 ```
