@@ -1,23 +1,24 @@
 [tool.poetry]
 name = "tellar"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Gilles Grousset <gilles.grousset@insideapp.fr>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-langchain = "^0.0.229"
+langchain = "^0.2.12"
 colorama = "^0.4.6"
 click = "^8.1.4"
 gptcache = "^0.1.35"
-pyfiglet = "^0.8.post1"
-urllib3 = "1.26.15"
-openai = "^0.27.8"
-pypdf = "^3.12.1"
-#pydantic = "1.10.11"
-tiktoken = "^0.4.0"
+pyfiglet = "^1.0.2"
+urllib3 = "2.2.2"
+openai = "^1.38.0"
+pypdf = "^4.3.1"
+tiktoken = "^0.7.0"
 faiss-cpu = "^1.7.4"
+langchain-community = "^0.2.11"
+langchain-openai = "^0.1.20"
 
 [tool.poetry.scripts]
 tellar = "tellar.cli:cli"

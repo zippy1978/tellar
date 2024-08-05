@@ -1,7 +1,7 @@
 from gptcache import Cache
 from gptcache.manager.factory import manager_factory
 from gptcache.processor.pre import get_prompt
-from langchain.cache import GPTCache
+from langchain_community.cache import GPTCache
 import hashlib
 import langchain
 import os
