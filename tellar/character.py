@@ -15,6 +15,9 @@ import json
 class Answer:
     text: str = None
     image: str = None
+    
+    def to_json(self):
+        return {"text": self.text, "image": self.image}
 
     @classmethod
     def from_json(cls, json: dict):
@@ -30,22 +33,27 @@ class Answer:
         # And eventual "```" suffix
         if json_str.endswith("```"):
             json_str = json_str[:-3]
+        # Escape new lines
+        json_str = json_str.replace('\n', '\\n')
         try:
             return cls.from_json(json.loads(json_str))
         except json.JSONDecodeError:
-            return cls(text=f"ERROR: Invalid JSON response: {json_str}")
+            return cls(text=f"{json_str}")
 
 
 class Character:
 
     def __init__(
         self,
+        name: str,
         retriever: BaseRetriever,
         char_name: str,
         language: str,
+        goal: str = None,
         verbose: bool = False,
         temp_speech_file_path: Path = None,
     ):
+        self.name = name
         self.retriever = retriever
         self.char_name = char_name
         self.language = language
@@ -61,16 +69,19 @@ class Character:
                 os.path.join(user_data_path, "speech.mp3")
             )
 
-        expected_output = """{{"text": "your answer", "image": "https://..."}}"""
+        expected_output = """{{"text": "your answer", "image": "image url"}}"""
 
         instructions = f"""
         Your are {char_name}.
-        Use story_tool to learn about your own story.
+        {goal}
+        Use story_tool to learn about your own story (rely exclusively on it to know more about yourself).
         Do speak in the first person from the perspective of {char_name}.
         Do use story_tool to know more about your character.
         Use only {language} to reply.
-        Always answer using a RAW JSON formatted response like this: {expected_output}
-        Where text is your answer, and image is the URL of the image you want to show (if any).
+        Try not to repeat yourself in conversations. Sometimes, open your answers with questions when you need to move forward.
+        Take initiatives and think by yourself.
+        ALWAYS answer using a RAW JSON formatted response ONLY, formatted like this: {expected_output}
+        Where text is your answer, and image is the URL of the image you created using the draw tool (if any).
         """
 
         prompt = ChatPromptTemplate.from_messages(
@@ -81,7 +92,7 @@ class Character:
                 ("placeholder", "{agent_scratchpad}"),
             ]
         )
-        model = ChatOpenAI(model="gpt-4o")
+        model = ChatOpenAI(model="gpt-4o-mini")
 
         @tool
         def story_tool(query: str) -> str:
@@ -118,9 +129,22 @@ class Character:
         client = openai.OpenAI()
         with client.audio.speech.with_streaming_response.create(
             model="tts-1",
-            voice="echo",
+            voice="onyx",
             # response_format="opus",
             input=message,
         ) as response:
             response.stream_to_file(self.temp_speech_file_path)
         return self.temp_speech_file_path
+
+    def clone(self, language: str = None, goal: str = None):
+        return Character(
+            name=self.name,
+            retriever=self.retriever,
+            char_name=self.char_name,
+            language=language or self.language,
+            goal=goal,
+            verbose=self.verbose,
+            temp_speech_file_path=self.temp_speech_file_path,
+        )
+        
+    

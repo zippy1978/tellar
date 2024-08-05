@@ -1,11 +1,12 @@
-import pathlib
 import click
 import os
 from colorama import Fore, Style
 import pyfiglet
 from tellar.cache import init_cache
+from langchain_core.vectorstores.base import VectorStore
 
 from tellar.character import Character
+from tellar.api.server import start_server
 from tellar.vectordb import load_vectordb
 
 
@@ -27,7 +28,15 @@ from tellar.vectordb import load_vectordb
 @click.option(
     "--voice", "-v", help="enable voice", is_flag=True, show_default=True, default=False
 )
-def cli(character: str, pdf: str, language: str, debug: bool, voice: bool):
+@click.option(
+    "--serve",
+    "-s",
+    help="enable HTTP API mode",
+    is_flag=True,
+    show_default=True,
+    default=False,
+)
+def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve: bool):
     print("Reading book... Please wait")
 
     # Check OpenAI API key
@@ -54,16 +63,41 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool):
     print(pyfiglet.figlet_format(character))
     # Create character
     char = Character(
+        name=character,
         retriever=vectordb.as_retriever(),
         char_name=character,
         language=language,
         verbose=debug,
     )
+    if serve:
+        # Server mode
+        __server_mode(vectordb, character, language, debug)
+    else:
+        # Interactive mode
+        __interactive_mode(vectordb, character, language, debug, voice)
+
+
+def __server_mode(vectordb: VectorStore, character: str, language: str, debug: bool):
+
+    start_server(vectordb, character, language, debug)
+
+
+def __interactive_mode(vectordb: VectorStore, character: str, language: str, debug: bool, voice: bool):
+    
+    # Create character
+    char = Character(
+        name=character,
+        retriever=vectordb.as_retriever(),
+        char_name=character,
+        language=language,
+        verbose=debug,
+    )
+    
     # Prompt loop
     while True:
         print(Style.BRIGHT + Fore.BLUE + "You > " + Style.RESET_ALL, end="")
         message = input()
-        print(Style.BRIGHT + Fore.GREEN + character + " > " + Style.RESET_ALL, end="")
+        print(Style.BRIGHT + Fore.GREEN + char.name + " > " + Style.RESET_ALL, end="")
         answer = char.answer(message)
         print(answer.text)
         if answer.image is not None:
