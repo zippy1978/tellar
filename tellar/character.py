@@ -80,8 +80,9 @@ class Character:
         Use only {language} to reply.
         Try not to repeat yourself in conversations. Sometimes, open your answers with questions when you need to move forward.
         Take initiatives and think by yourself.
+        Always draw and think using a style matching the era and universe of your story.
         ALWAYS answer using a RAW JSON formatted response ONLY, formatted like this: {expected_output}
-        Where text is your answer, and image is the URL of the image you created using the draw tool (if any).
+        Where text is your answer, and image is the URL of the image you created using the draw tool (if any otherwise set it to null).
         """
 
         prompt = ChatPromptTemplate.from_messages(
