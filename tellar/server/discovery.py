@@ -1,29 +1,30 @@
-
 from dataclasses import dataclass
 from logging import Logger
+import logging
 import requests
 import socket
 import threading
-from tellar.api.model import Info
+from tellar.server.model import Info
+
 
 class Discovery:
-    
+
     @dataclass
     class Server:
         url: str
         info: Info
-        
+
         def __eq__(self, other):
             return self.url == other.url
-        
+
         def __hash__(self):
             return hash(self.url)
-    
-    def __init__(self, udp_port: int, http_port: int, logger: Logger):
+
+    def __init__(self, udp_port: int, http_port: int):
         self.udp_port = udp_port
         self.http_port = http_port
         self.__running = False
-        self.logger = logger
+        self.logger = logger = logging.getLogger(__name__)
         self.servers = set()
 
     def start(self):
@@ -46,7 +47,7 @@ class Discovery:
         self.logger.debug("Discovering servers...")
 
         new_servers = set()
-        
+
         # Try to discover peers on a port range
         for port in range(9000, 9009):
 
@@ -63,12 +64,14 @@ class Discovery:
                 message = "DISCOVER_SERVER"
                 sock.sendto(message.encode(), ("<broadcast>", port))
 
-               
                 while self.__running:
                     try:
                         data, addr = sock.recvfrom(1024)
                         new_servers.add(Discovery.Server(url=data.decode(), info=None))
                     except socket.timeout:
+                        break
+                    except Exception as e:
+                        self.logger.error(f"Error: {e}")
                         break
 
         # Check for disconnected servers
@@ -83,7 +86,7 @@ class Discovery:
             except Exception as e:
                 continue
         self.servers = servers
-        
+
         self.logger.debug(f"Discovered servers: {self.servers}")
 
         # Restart
@@ -115,4 +118,3 @@ class Discovery:
                     break
 
             self.logger.info("Server is no more discoverable")
-

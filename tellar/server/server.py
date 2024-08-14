@@ -3,32 +3,21 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import json
 import logging
+import time
 from urllib.parse import urlparse
 from fastapi.responses import StreamingResponse
 import uvicorn
 import socket
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from tellar.api.discovery import Discovery
-from tellar.api.model import Info, Message
+from tellar.server.discovery import Discovery
+from tellar.server.model import Info, Message
 from tellar.character import Answer, Character
 import websockets
-from time import sleep
-from langchain_core.vectorstores.base import VectorStore
 import requests
 
-# Configure the logger
-logging.basicConfig(
-    level=logging.DEBUG,  # Set the logging level
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
-    handlers=[logging.StreamHandler()],  # Console output
-)
 
-# Create a logger instance
-logger = logging.getLogger("uvicorn.error")
-# Add filter to remove requests logs
-logger.addFilter(
-    lambda record: "requests.packages.urllib3.connectionpool" not in record.getMessage()
-)
+# Logger
+logger = logging.getLogger(__name__)
 
 
 def __find_free_port(
@@ -47,20 +36,22 @@ def __find_free_port(
                 continue
     raise RuntimeError("No free ports available")
 
+
 class AppState:
     def __init__(self, char):
         self.char = char
-         # Holds conversations from different users
+        # Holds conversations from different users
         self.conversations_from = {}
         # Holds history of conversations from different users
         self.history_from = {}
         self.picture = None
+        self.description = None
 
-def __create_app(char: Character, discovery: Discovery) -> FastAPI:
+
+def create_app(char: Character, discovery: Discovery) -> FastAPI:
 
     app = FastAPI()
     state = AppState(char)
-
 
     @app.get("/")
     async def read_root():
@@ -69,13 +60,23 @@ def __create_app(char: Character, discovery: Discovery) -> FastAPI:
     @app.get("/picture")
     async def read_picture():
         if state.picture is None:
-            answer = state.char.clone().answer(
+            answer = await state.char.clone().answer(
                 "Draw the most accurate portrait picture of you based on the information from story_tool. Use a picture style matching the era and universe of your story."
             )
             logger.info(f"Picture: {answer.image}")
             state.picture = requests.get(answer.image).content
 
         return StreamingResponse(BytesIO(state.picture), media_type="image/jpeg")
+
+    @app.get("/description")
+    async def read_description():
+        if state.description is None:
+            answer = await state.char.clone().answer(
+                "Describe yourself in a few words (no full sentence)."
+            )
+            logger.info(f"Description: {answer.text}")
+            state.description = answer.text
+        return state.description
 
     @app.get("/history/{char_name}")
     async def read_history(char_name: str):
@@ -90,17 +91,21 @@ def __create_app(char: Character, discovery: Discovery) -> FastAPI:
             while True:
                 data = await websocket.receive_json()
                 msg = Message.from_json(data)
+                msg.timestamp = int(time.time())
                 if msg.sender not in state.conversations_from:
                     logger.info(f"New conversation from [{msg.sender}]")
                     state.conversations_from[msg.sender] = state.char.clone()
                     state.history_from[msg.sender] = []
                 logger.info(f"Received message from [{msg.sender}]: {msg.text}")
                 state.history_from[msg.sender].append(msg)
-                answer = state.conversations_from[msg.sender].answer(msg.text)
+                answer = await state.conversations_from[msg.sender].answer(msg.text)
                 logger.info(f"Answer: {answer.text} [{answer.image}]")
                 # Convert answer to Message model
                 reply_message = Message(
-                    sender=char.name, text=answer.text, image=answer.image
+                    sender=char.name,
+                    text=answer.text,
+                    timestamp=int(time.time()),
+                    image=answer.image,
                 )
                 state.history_from[msg.sender].append(reply_message)
                 await websocket.send_json(reply_message.to_json())
@@ -108,7 +113,11 @@ def __create_app(char: Character, discovery: Discovery) -> FastAPI:
             logger.info(f"Client disconnected: {e}")
         except Exception as e:
             logger.error(f"Error: {e}")
+            await websocket.close()
 
+    # Preload description
+    asyncio.run(read_description())
+    
     return app
 
 
@@ -139,13 +148,13 @@ async def __start_conversation(discovery: Discovery, char: Character):
     ws_url = f"ws://{url.netloc}/ws"
 
     # Generate goal
-    goal = char.clone(language="english").answer(
+    goal = await char.clone(language="english").answer(
         "What is your main goal in life (write it at 3rd person) ?"
     )
     logger.info(f"Goal: {goal.text}")
 
     # Generate intial message
-    initial_msg = char.clone().answer(
+    initial_msg = await char.clone().answer(
         "What would you say to someone you just met to engage the conversation ? (say it as like you speak to this person)"
     )
 
@@ -159,10 +168,16 @@ async def __start_conversation(discovery: Discovery, char: Character):
         try:
             async with websockets.connect(ws_url) as websocket:
                 if retries > 0:
-                    initial_msg = Message(sender=char.name, text="?")
+                    initial_msg = Message(
+                        sender=char.name, text="?", timestamp=int(time.time())
+                    )
                 await websocket.send(
                     json.dumps(
-                        Message(sender=char.name, text=initial_msg.text).to_json()
+                        Message(
+                            sender=char.name,
+                            text=initial_msg.text,
+                            timestamp=int(time.time()),
+                        ).to_json()
                     )
                 )
                 logger.info(f"## YOU >> {initial_msg.text}")
@@ -173,11 +188,15 @@ async def __start_conversation(discovery: Discovery, char: Character):
                         logger.info(
                             f"## {server.info.name} >> {answer.text} [{answer.image}]"
                         )
-                        next_msg = char.answer(answer.text)
+                        next_msg = await char.answer(answer.text)
                         logger.info(f"## YOU >> {next_msg.text}")
                         await websocket.send(
                             json.dumps(
-                                Message(sender=char.name, text=next_msg.text).to_json()
+                                Message(
+                                    sender=char.name,
+                                    text=next_msg.text,
+                                    timestamp=int(time.time()),
+                                ).to_json()
                             )
                         )
                         print(f"history len : {len(char.chat_history)}")
@@ -192,36 +211,27 @@ async def __start_conversation(discovery: Discovery, char: Character):
         retries += 1
 
 
-def start_server(vectordb: VectorStore, character: str, language: str, debug: bool):
+def start_server(char: Character):
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     executor = ThreadPoolExecutor()
-
-    # Create character
-    char = Character(
-        name=character,
-        retriever=vectordb.as_retriever(),
-        char_name=character,
-        language=language,
-        verbose=debug,
-    )
 
     logger.info(f"Starting server for {char.name}")
 
     http_port = __find_free_port()
     udp_port = __find_free_port(start_port=9000, socket_kind=socket.SOCK_DGRAM)
 
-    discovery = Discovery(udp_port, http_port, logger)
+    discovery = Discovery(udp_port, http_port)
     discovery.start()
 
-    # If char.name is "Harry"
-    if char.name == "Harry":
+    # If char.name is "Hermione"
+    if char.name == "Hermione":
         loop.run_in_executor(
             executor, loop.run_until_complete, __start_conversation(discovery, char)
         )
 
-    app = __create_app(char, discovery)
+    app = create_app(char, discovery)
 
     uvicorn.run(
         app,

@@ -1,13 +1,28 @@
+import asyncio
+import logging
 import click
 import os
 from colorama import Fore, Style
 import pyfiglet
-from tellar.cache import init_cache
-from langchain_core.vectorstores.base import VectorStore
+import uvicorn
 
 from tellar.character import Character
-from tellar.api.server import start_server
-from tellar.vectordb import load_vectordb
+from tellar.server.server import start_server
+from tellar.searchable_document import SearchableDocument
+
+ # Configure logging
+stream_handler = logging.StreamHandler()
+logging.basicConfig(
+    level=logging.CRITICAL,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[stream_handler],
+    )
+logger = logging.getLogger("tellar")
+logger.setLevel(logging.INFO)
+console_formatter = uvicorn.logging.ColourizedFormatter(
+        "{levelprefix} {message}",
+        style="{", use_colors=True)
+stream_handler.setFormatter(console_formatter)
 
 
 @click.command()
@@ -56,54 +71,48 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve
     home_dir = os.path.expanduser("~")
     user_data_path = os.path.join(home_dir, ".tellar")
     pdf_name = os.path.basename(pdf)
-    # Init query cache
-    init_cache(os.path.join(user_data_path, "cache", pdf_name))
-    # Create / load vector database
-    vectordb = load_vectordb(pdf, os.path.join(user_data_path, "db", pdf_name))
+
+    # Create searchable document
+    searchable_doc = SearchableDocument(pdf)
+
     print(pyfiglet.figlet_format(character))
+    
     # Create character
     char = Character(
         name=character,
-        retriever=vectordb.as_retriever(),
+        searchable_doc=searchable_doc,
         char_name=character,
         language=language,
         verbose=debug,
     )
+
+    # Start
     if serve:
         # Server mode
-        __server_mode(vectordb, character, language, debug)
+        __server_mode(char)
     else:
         # Interactive mode
-        __interactive_mode(vectordb, character, language, debug, voice)
+        __interactive_mode(char, voice)
 
 
-def __server_mode(vectordb: VectorStore, character: str, language: str, debug: bool):
+def __server_mode(char: Character):
 
-    start_server(vectordb, character, language, debug)
+    start_server(char)
 
 
-def __interactive_mode(vectordb: VectorStore, character: str, language: str, debug: bool, voice: bool):
-    
-    # Create character
-    char = Character(
-        name=character,
-        retriever=vectordb.as_retriever(),
-        char_name=character,
-        language=language,
-        verbose=debug,
-    )
-    
+def __interactive_mode(char: Character, voice: bool):
+
     # Prompt loop
     while True:
         print(Style.BRIGHT + Fore.BLUE + "You > " + Style.RESET_ALL, end="")
         message = input()
         print(Style.BRIGHT + Fore.GREEN + char.name + " > " + Style.RESET_ALL, end="")
-        answer = char.answer(message)
+        answer = asyncio.run(char.answer(message))
         print(answer.text)
         if answer.image is not None:
             print(f"[{answer.image}]")
         if voice:
-            speech_file_path = char.speak(answer.text)
+            speech_file_path = asyncio.run(char.speak(answer.text))
             # Play the speech file
             os.system(f"afplay {speech_file_path}")
 
