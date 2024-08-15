@@ -15,3 +15,13 @@ def find_free_port(
                 # Port is already in use, try the next one
                 continue
     raise RuntimeError("No free ports available")
+
+def get_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception as e:
+        return "127.0.0.1"  # Fallback to localhost

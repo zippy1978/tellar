@@ -76,7 +76,7 @@ class TestDiscovery(unittest.TestCase):
 
         # Set up the mock to raise an exception after sending the response
         mock_socket_instance.recvfrom.side_effect = [
-            (b"DISCOVER_SERVER", ("127.0.0.1", 9000)),
+            (b"TELLAR_SERVER", ("127.0.0.1", 9000)),
             Exception("Stop the loop"),
         ]
 

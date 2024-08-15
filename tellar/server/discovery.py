@@ -62,7 +62,7 @@ class Discovery:
                 sock.settimeout(1)
 
                 # Send broadcast message
-                message = "DISCOVER_SERVER"
+                message = "TELLAR_SERVER"
                 sock.sendto(message.encode(), ("<broadcast>", port))
 
                 while self.__running:
@@ -104,7 +104,7 @@ class Discovery:
             while self.__running:
                 try:
                     data, addr = sock.recvfrom(1024)
-                    if data.decode() == "DISCOVER_SERVER":
+                    if data.decode() == "TELLAR_SERVER":
                         response = f"http://{socket.gethostbyname(socket.gethostname())}:{http_port}"
                         sock.sendto(response.encode(), addr)
                         sock.sendto(response.encode(), ("127.0.0.1", udp_port))

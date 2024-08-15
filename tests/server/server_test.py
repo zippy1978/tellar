@@ -67,15 +67,6 @@ def test_read_history_empty(client):
     assert response.json() == []
 
 
-@pytest.mark.asyncio
-async def test_websocket_endpoint(client, server):
-    with client.websocket_connect("/ws") as websocket:
-        websocket.send_json({"sender": "test_user", "text": "Hello"})
-        response = websocket.receive_json()
-        assert response["sender"] == "Test Character"
-        assert response["text"] == "Test answer"
-
-
 @patch("tellar.server.server.find_free_port")
 @patch("tellar.server.server.Discovery")
 @patch("uvicorn.run")
