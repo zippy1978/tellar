@@ -136,7 +136,7 @@ class Character:
             {"input": query, "chat_history": self.chat_history}
         )
         answer = Answer.from_json_str(raw_answer["output"])
-        self.chat_history.extend([HumanMessage(content=query),raw_answer["output"]])
+        self.chat_history.extend([HumanMessage(content=query), raw_answer["output"]])
         return answer
 
     async def speak(self, message: str) -> Path:

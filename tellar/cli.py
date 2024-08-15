@@ -7,7 +7,7 @@ import pyfiglet
 import uvicorn
 
 from tellar.character import Character
-from tellar.server.server import start_server
+from tellar.server.server import Server
 from tellar.searchable_document import SearchableDocument
 
  # Configure logging
@@ -94,10 +94,10 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve
         # Interactive mode
         __interactive_mode(char, voice)
 
-
 def __server_mode(char: Character):
 
-    start_server(char)
+    server = Server(char)
+    server.start()
 
 
 def __interactive_mode(char: Character, voice: bool):

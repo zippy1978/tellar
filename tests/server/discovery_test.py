@@ -8,10 +8,7 @@ from tellar.server.model import Info
 class TestDiscovery(unittest.TestCase):
 
     def setUp(self):
-        self.logger_mock = Mock()
-        self.discovery = Discovery(
-            udp_port=9000, http_port=8000, logger=self.logger_mock
-        )
+        self.discovery = Discovery(udp_port=9000, http_port=8000)
 
     def test_init(self):
         self.assertEqual(self.discovery.udp_port, 9000)

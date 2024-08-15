@@ -31,7 +31,7 @@ class SearchableDocument:
                 )
             )
             vectordb = FAISS.from_documents(pages, embeddings)
-            vectordb.save_local(self.db_path)
+            vectordb.save_local(db_path)
         return vectordb
     
     def search(self, query: str):

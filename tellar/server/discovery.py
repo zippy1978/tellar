@@ -6,6 +6,8 @@ import socket
 import threading
 from tellar.server.model import Info
 
+# Logger
+logger = logging.getLogger(__name__)
 
 class Discovery:
 
@@ -24,7 +26,6 @@ class Discovery:
         self.udp_port = udp_port
         self.http_port = http_port
         self.__running = False
-        self.logger = logger = logging.getLogger(__name__)
         self.servers = set()
 
     def start(self):
@@ -44,7 +45,7 @@ class Discovery:
         self.__adv_thread.join()
 
     def __discover(self):
-        self.logger.debug("Discovering servers...")
+        logger.debug("Discovering servers...")
 
         new_servers = set()
 
@@ -71,7 +72,7 @@ class Discovery:
                     except socket.timeout:
                         break
                     except Exception as e:
-                        self.logger.error(f"Error: {e}")
+                        logger.error(f"Error: {e}")
                         break
 
         # Check for disconnected servers
@@ -87,7 +88,7 @@ class Discovery:
                 continue
         self.servers = servers
 
-        self.logger.debug(f"Discovered servers: {self.servers}")
+        logger.debug(f"Discovered servers: {self.servers}")
 
         # Restart
         if self.__running:
@@ -99,7 +100,7 @@ class Discovery:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(("", udp_port))
             sock.settimeout(3)
-            self.logger.info(f"Server is discoverable on UDP {udp_port}")
+            logger.info(f"Server is discoverable on UDP {udp_port}")
             while self.__running:
                 try:
                     data, addr = sock.recvfrom(1024)
@@ -114,7 +115,7 @@ class Discovery:
                     if self.__running == False:
                         break
                 except Exception as e:
-                    self.logger.error(f"Error: {e}")
+                    logger.error(f"Error: {e}")
                     break
 
-            self.logger.info("Server is no more discoverable")
+            logger.info("Server is no more discoverable")

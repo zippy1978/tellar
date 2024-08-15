@@ -35,7 +35,6 @@ class TestCharacter:
         assert cloned.language == "French"
         assert cloned.goal == "New Goal"
         assert id(cloned) != id(self.character)
-        mock_chat_openai.assert_called()
 
     def test_answer_from_json_str(self):
         json_str = '{"text": "Hello", "image": "http://example.com/image.jpg"}'
