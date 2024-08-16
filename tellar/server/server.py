@@ -20,18 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class Server:
-
     class AppState:
         def __init__(self):
-            # Holds conversations from different users
             self.conversations_from = {}
-            # Holds history of conversations from different users
             self.history_from = {}
             self.picture = None
             self.description = None
-            # Image cache
             self.images = {}
-
+            self.lock = asyncio.Lock()
+  
     def __init__(self, char: Character):
         self.__char = char
         self.__state = Server.AppState()
@@ -55,8 +52,10 @@ class Server:
         image_hash = hashlib.sha256(image_url.encode()).hexdigest()
         # Store it to cache if not present
         if image_hash not in self.__state.images:
-            response = await self.__http_get(image_url)
-            self.__state.images[image_hash] = response.content
+            async with self.__state.lock:
+                if image_hash not in self.__state.images:
+                    response = await self.__http_get(image_url)
+                    self.__state.images[image_hash] = response.content
         # Retrieve local server address
         return f"http://{get_ip()}:{self.__http_port}/image/{image_hash}"
 
@@ -86,12 +85,14 @@ class Server:
         @app.get("/picture")
         async def read_picture():
             if self.__state.picture is None:
-                answer = await self.__char.clone().answer(
-                    "Draw the most accurate portrait picture of you based on the information from story_tool. Use a picture style matching the era and universe of your story."
-                )
-                logger.info(f"Picture: {answer.image}")
-                response = await self.__http_get(answer.image)
-                self.__state.picture = response.content
+                async with self.__state.lock:
+                    if self.__state.picture is None:
+                        answer = await self.__char.clone().answer(
+                            "Draw the most accurate portrait picture of you based on the information from story_tool. Use a picture style matching the era and universe of your story."
+                        )
+                        logger.info(f"Picture: {answer.image}")
+                        response = await self.__http_get(answer.image)
+                        self.__state.picture = response.content
 
             return StreamingResponse(
                 BytesIO(self.__state.picture), media_type="image/jpeg"
@@ -106,11 +107,13 @@ class Server:
         @app.get("/description")
         async def read_description():
             if self.__state.description is None:
-                answer = await self.__char.clone().answer(
-                    "Describe yourself in a few words (no full sentence)."
-                )
-                logger.info(f"Description: {answer.text}")
-                self.__state.description = answer.text
+                async with self.__state.lock:
+                    if self.__state.description is None:
+                        answer = await self.__char.clone().answer(
+                            "Describe yourself in a few words (no full sentence)."
+                        )
+                        logger.info(f"Description: {answer.text}")
+                        self.__state.description = answer.text
             return self.__state.description
 
         @app.get("/history/{char_name}")
@@ -146,8 +149,6 @@ class Server:
                 logger.error(f"Error in WebSocket handler: {str(e)}")
                 await websocket.close(code=1011)  # Internal error
 
-        # Preload description
-        asyncio.run(read_description())
 
         return app
 
