@@ -35,6 +35,8 @@ Options:
   -d, --debug           debug mode
   -v, --voice           enable voice
   -s, --serve           enable HTTP API mode
+  -a, --auto            auto mode: look for another tellar on the network and
+                        engage in conversation
   --help                Show this message and exit.
 ```
 

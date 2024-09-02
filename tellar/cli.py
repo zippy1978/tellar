@@ -7,6 +7,7 @@ import pyfiglet
 import uvicorn
 
 from tellar.character import Character
+from tellar.server.client import Client
 from tellar.server.server import Server
 from tellar.searchable_document import SearchableDocument
 
@@ -51,7 +52,8 @@ stream_handler.setFormatter(console_formatter)
     show_default=True,
     default=False,
 )
-def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve: bool):
+@click.option("--auto", "-a", help="auto mode: look for another tellar on the network and engage in conversation", is_flag=True, show_default=True, default=False)
+def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve: bool, auto: bool):
     print("Reading book... Please wait")
 
     # Check OpenAI API key
@@ -68,10 +70,6 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve
         print(Fore.RED + "PDF file not found." + Style.RESET_ALL)
         exit(1)
 
-    home_dir = os.path.expanduser("~")
-    user_data_path = os.path.join(home_dir, ".tellar")
-    pdf_name = os.path.basename(pdf)
-
     # Create searchable document
     searchable_doc = SearchableDocument(pdf)
 
@@ -86,6 +84,15 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve
         verbose=debug,
     )
 
+    # Auto mode does not work with server mode enabled
+    if auto and serve:
+        print(Fore.RED + "Auto mode does not work with server mode enabled." + Style.RESET_ALL)
+        exit(1)
+    
+    # Auto mode does not work with interactive mode
+    if auto and not serve:
+        __auto_mode(char)
+
     # Start
     if serve:
         # Server mode
@@ -93,9 +100,13 @@ def cli(character: str, pdf: str, language: str, debug: bool, voice: bool, serve
     else:
         # Interactive mode
         __interactive_mode(char, voice)
+        
+        
+def __auto_mode(char: Character):
+    client = Client(char)
+    client.start()
 
 def __server_mode(char: Character):
-
     server = Server(char)
     server.start()
 

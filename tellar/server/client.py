@@ -4,6 +4,8 @@ import logging
 import socket
 import time
 from urllib.parse import urlparse
+
+from colorama import Fore, Style
 from tellar.server.discovery import Discovery
 from tellar.server.model import Message
 from tellar.character import Answer, Character
@@ -36,7 +38,7 @@ class Client:
             (
                 s
                 for s in discovery.servers
-                if s.info is not None and s.info.name != char.name
+                if s.info is not None and s.info.name != self.__char.name
             ),
             None,
         )
@@ -62,7 +64,7 @@ class Client:
         )
 
         # Clone character with new goal
-        char = char.clone(
+        char = self.__char.clone(
             goal=f"You are talking to {server.info.name}. Check if you know him/her. Try to follow your goal: {goal.text}"
         )
 
@@ -83,16 +85,40 @@ class Client:
                             ).to_json()
                         )
                     )
-                    logger.info(f"## YOU >> {initial_msg.text}")
+
+                    logger.info(
+                        Style.BRIGHT
+                        + Fore.BLUE
+                        + char.name
+                        + " > "
+                        + Style.RESET_ALL
+                        + initial_msg.text
+                    )
                     while True:
                         try:
                             data = await websocket.recv()
                             answer = Answer.from_json(json.loads(data))
                             logger.info(
-                                f"## {server.info.name} >> {answer.text} [{answer.image}]"
+                                Style.BRIGHT
+                                + Fore.GREEN
+                                + server.info.name
+                                + " > "
+                                + Style.RESET_ALL
+                                + answer.text
+                                + " ["
+                                + (answer.image or "no image")
+                                + "]"
                             )
+
                             next_msg = await char.answer(answer.text)
-                            logger.info(f"## YOU >> {next_msg.text}")
+                            logger.info(
+                                Style.BRIGHT
+                                + Fore.BLUE
+                                + char.name
+                                + " > "
+                                + Style.RESET_ALL
+                                + next_msg.text
+                            )
                             await websocket.send(
                                 json.dumps(
                                     Message(
@@ -102,7 +128,6 @@ class Client:
                                     ).to_json()
                                 )
                             )
-                            print(f"history len : {len(char.chat_history)}")
                         except websockets.exceptions.ConnectionClosed as e:
                             logger.error(f"Connection closed: {e}")
                             break
